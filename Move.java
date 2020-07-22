@@ -2,12 +2,18 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
+
+/*
+ * Move object is used to create OR Graph that enables to keep track of sequence of moves possible from currecnt position
+*/
 public class Move {
 	int row,col,dice;
 	Move parent;
 	Set<Move> children;
 	
-	public Move(int row, int col, int dice, Move parent) {
+	/*
+	 * Copy Constructor
+	 */public Move(int row, int col, int dice, Move parent) {
 		super();
 		this.row = row;
 		this.col = col;
@@ -25,7 +31,9 @@ public class Move {
 		return result;
 	}
 
-	@Override
+	/*
+	 * Two Move Objects are equal only if their row and cols are equal
+	 */@Override
 	public boolean equals(Object obj) {
 		if (this == obj)
 			return true;
@@ -41,7 +49,10 @@ public class Move {
 		return true;
 	}
 	
-	public void display(int x) {
+	/*
+	 * For Debugging Purpose
+	 * Displays all the move sequences possible
+	 */public void display(int x) {
 		String str="";
 		for(int i=0;i<x;i++) str+="\t";
 		System.out.println(str+row+" "+col);

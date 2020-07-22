@@ -1,6 +1,9 @@
 import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+
 import javax.swing.*;
 
 /*
@@ -22,7 +25,18 @@ public class ChessProject extends JFrame implements MouseListener, MouseMotionLi
 	JLabel pieces;
 	JPanel board[][] = new JPanel[8][8];
 	int row, col;
+	/*
+	 * Checkers object is used as controller. This class is used for presentation
+	 * only. The business logic is present entirely in Checkers class
+	 */
+	/*
+	 * Maintains Computer's game state
+	 */
 	Checkers game = new Checkers();
+	/*
+	 * Maintains Player's Game State
+	 */
+	Checkers oppnGame = null;
 	Move m;
 
 	public ChessProject() {
@@ -65,46 +79,19 @@ public class ChessProject extends JFrame implements MouseListener, MouseMotionLi
 				if (game.board[i][j] == -1) {
 					pieces = new JLabel(new ImageIcon("BlackPawn.png"));
 					panels = board[i][j];
+					panels.removeAll();
 					panels.add(pieces);
 				} else if (game.board[i][j] == 1) {
 					pieces = new JLabel(new ImageIcon("WhitePawn.png"));
 					panels = board[i][j];
+					panels.removeAll();
 					panels.add(pieces);
 				} else {
 					panels = board[i][j];
 					panels.removeAll();
 				}
 			}
-			System.out.println(game);
 		}
-	}
-
-	/*
-	 * This method checks if there is a piece present on a particular square.
-	 */
-	private Boolean piecePresent(int x, int y) {
-		Component c = chessBoard.findComponentAt(x, y);
-		if (c instanceof JPanel) {
-			return false;
-		} else {
-			return true;
-		}
-	}
-
-	/*
-	 * This is a method to check if a piece is a Black piece.
-	 */
-	private Boolean checkWhiteOponent(int newX, int newY) {
-		Boolean oponent;
-		Component c1 = chessBoard.findComponentAt(newX, newY);
-		JLabel awaitingPiece = (JLabel) c1;
-		String tmp1 = awaitingPiece.getIcon().toString();
-		if (((tmp1.contains("Black")))) {
-			oponent = true;
-		} else {
-			oponent = false;
-		}
-		return oponent;
 	}
 
 	/*
@@ -122,19 +109,22 @@ public class ChessProject extends JFrame implements MouseListener, MouseMotionLi
 		xAdjustment = parentLocation.x - e.getX();
 		yAdjustment = parentLocation.y - e.getY();
 		chessPiece = (JLabel) c;
-
-		game = new Checkers(game);
+		
+		/*
+		 * The Player's game state is updated at this point
+		 */
+		oppnGame = new Checkers(game);
 		for (int i = 0; i < 8; i++) {
 			for (int j = 0; j < 8; j++) {
 				if (board[i][j] == (JPanel) chessPiece.getParent()) {
-					m = new Move(i, j, game.board[i][j], null);
-					row = 1;
+					m = new Move(i, j, oppnGame.board[i][j], null);
+					row = i;
 					col = j;
 				}
 			}
 		}
-		game.visited.clear();
-		game.findBestMoves(m);
+		oppnGame.visited.clear();
+		oppnGame.findBestMoves(m);
 		initialX = e.getX();
 		initialY = e.getY();
 		startX = (e.getX() / 75);
@@ -160,38 +150,37 @@ public class ChessProject extends JFrame implements MouseListener, MouseMotionLi
 		
 		chessPiece.setVisible(false);
 		Component c = chessBoard.findComponentAt(e.getX(), e.getY());
-		String tmp = chessPiece.getIcon().toString();
 		
 		for (int i = 0; i < 8; i++) {
 			for (int j = 0; j < 8; j++) {
 				if (board[i][j].equals(c)) {
 					Move m = new Move(row, col, -1, null);
 					Move end = new Move(i, j, 0, null);
-					game.visited.clear();
-					int score = game.findBestMoves(m);
-					game.visited.clear();
-					if (game.performOppnMove(m, score, end)) {
-						game.board[m.row][m.col]=0;
+					oppnGame.visited.clear();
+					int score = oppnGame.findBestMoves(m);
+					oppnGame.visited.clear();
+					oppnGame.visited.add(m);
+					/*
+					 * Checks if the move performed by player is valid. if so update else undo.
+					 */if (oppnGame.performMove(m, score, end) & !m.equals(end)) {
+						game = new Checkers(oppnGame);
+						game.visited.clear();
+						int max = game.AllMoves().get(0)[2];
+						int count = (int)game.AllMoves().stream().filter(m2->m2[2]==max).count();
+						int[] move = game.AllMoves().stream().filter(m1->m1[2]==max).collect(Collectors.toList()).get(Math.abs(new Random().nextInt())%count);
+						Move black = new Move(move[0], move[1], -1, null);
+						game.visited.clear();
+						score = game.findBestMoves(black);
+						game.visited.clear();
+						game.performMove(black, score);
 						break;
 					}
 				}
 			}
 		}
-		game = new Checkers(game);
+		System.out.println(game);
 		updateBoard();
-		/*
-		 * The only piece that has been enabled to move is a White Pawn...but we should
-		 * really have this is a separate method somewhere...how would this work.
-		 * 
-		 * So a Pawn is able to move two squares forward one its first go but only one
-		 * square after that. The Pawn is the only piece that cannot move backwards in
-		 * chess...so be careful when committing a pawn forward. A Pawn is able to take
-		 * any of the opponent’s pieces but they have to be one square forward and one
-		 * square over, i.e. in a diagonal direction from the Pawns original position.
-		 * If a Pawn makes it to the top of the other side, the Pawn can turn into any
-		 * other piece, for demonstration purposes the Pawn here turns into a Queen.
-		 */
-	}
+			}
 
 	public void mouseClicked(MouseEvent e) {
 
@@ -215,7 +204,7 @@ public class ChessProject extends JFrame implements MouseListener, MouseMotionLi
 		JFrame frame = new ChessProject();
 		frame.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 		frame.pack();
-		frame.setResizable(true);
+		frame.setResizable(false);
 		frame.setLocationRelativeTo(null);
 		frame.setVisible(true);
 	}
